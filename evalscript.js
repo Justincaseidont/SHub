@@ -20,12 +20,14 @@ var earliest_date = "2018-04-11"; var middle_date = "2018-06-10"; var latest_dat
 //var earliest_date = "2018-03-25"; var middle_date = "2018-08-16"; var latest_date = "2018-12-26"; // Mekong delta, Vietnam, rice growth
 //var earliest_date = "2017-04-16"; var middle_date = "2018-04-11"; var latest_date = "2019-04-06"; // Mississipi delta, USA, during 2017-2019  
 
-
 // Definition stretch value for Composite
 var stretch_min = 0.0; var stretch_max = 1.1; // default value are stretch_min = 0; stretch_max = 1.1.
 // ***********************************
-var POL = "HH"
-// Selection of polarization
+
+var POL = "HH"; // "HH" for DH, "VV" for DV
+var stretch_min = 0.0;
+var stretch_max = 1.1;
+
 function setup() {
   return {
     input: [{ bands: [POL] }],
@@ -34,6 +36,45 @@ function setup() {
   };
 }
 
+function calcdB(sample) {
+  if (!sample) return 0;
+  var v = sample[POL];
+  if (!isFinite(v) || v <= 0) return 0;
+  return Math.max(0, Math.log(v) * 0.21714724095 + 1);
+}
+
+function stretch(val, min, max) {
+  var x = (val - min) / (max - min);
+  if (x < 0) return 0;
+  if (x > 1) return 1;
+  return x;
+}
+
+function evaluatePixel(samples, scenes) {
+  if (!samples || samples.length === 0) return [0, 0, 0];
+
+  var idx = [];
+  for (var i = 0; i < samples.length; i++) {
+    if (samples[i] && isFinite(samples[i][POL]) && samples[i][POL] > 0) idx.push(i);
+  }
+  if (idx.length === 0) return [0, 0, 0];
+
+  idx.sort(function(a, b) {
+    var da = new Date(scenes.orbits[a].dateFrom).getTime();
+    var db = new Date(scenes.orbits[b].dateFrom).getTime();
+    return da - db;
+  });
+
+  var earliest = idx[0];
+  var latest = idx[idx.length - 1];
+  var middle = idx[Math.floor((idx.length - 1) / 2)];
+
+  var r = stretch(calcdB(samples[latest]), stretch_min, stretch_max);
+  var g = stretch(calcdB(samples[middle]), stretch_min, stretch_max);
+  var b = stretch(calcdB(samples[earliest]), stretch_min, stretch_max);
+
+  return [r, g, b];
+}
 
 // Selection of dates for composite / analysis
 
@@ -57,23 +98,3 @@ function dateformat(d) {
   return isodate;
 }
 
-
-// Backscatter Coefficient
-function calcdB(sample) {
-  return (Math.max(0, Math.log((sample[POL])) * 0.21714724095 + 1));
-}
-
-
-// Stretch of RGB
-function stretch(val, min, max) {
-  return (val - min) / (max - min);
-}
-
-// RGB visualization
-function evaluatePixel(samples) {
-  var band1 = calcdB(samples[2]); // R: latest image
-  var band2 = calcdB(samples[1]); // G: middle-time image
-  var band3 = calcdB(samples[0]); // B: earliest image
-  var FalseColors = [stretch(band1, stretch_min, stretch_max), stretch(band2, stretch_min, stretch_max), stretch(band3, stretch_min, stretch_max)];
-  return (FalseColors);
-}
