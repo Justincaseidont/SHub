@@ -38,8 +38,8 @@ function evaluatePixel(samples, scenes) {
   var iMid = idx[Math.floor((idx.length - 1) / 2)];
 
   // HH Arctic default stretch
-  var LO = -25.0;
-  var HI = -5.0;
+  var LO = -28.0;
+  var HI = -6.0;
 
   var r = norm(toDb(samples[iLate].HH), LO, HI);   // latest
   var g = norm(toDb(samples[iMid].HH), LO, HI);    // middle
@@ -48,3 +48,4 @@ function evaluatePixel(samples, scenes) {
   var a = samples[iLate].dataMask ? 1 : 0;
   return [r, g, b, a];
 }
+
