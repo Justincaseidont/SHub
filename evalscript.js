@@ -24,7 +24,7 @@ var earliest_date = "2018-04-11"; var middle_date = "2018-06-10"; var latest_dat
 var stretch_min = 0.0; var stretch_max = 1.1; // default value are stretch_min = 0; stretch_max = 1.1.
 // ***********************************
 
-var POL = "HH"; // "HH" for DH, "VV" for DV
+var POL = "HV"; // "HH" for DH, "VV" for DV
 var stretch_min = 0.0;
 var stretch_max = 1.1;
 
@@ -97,4 +97,5 @@ function dateformat(d) {
   var isodate = yyyy + '-' + mm + '-' + dd;
   return isodate;
 }
+
 
