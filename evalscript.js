@@ -2,8 +2,8 @@
 
 function setup() {
   return {
-    input: [{ bands: ["HH", "dataMask"] }],
-    output: { bands: 4 },
+    input: [{ bands: ["HH"] }],
+    output: { bands: 3 },
     mosaicking: "ORBIT"
   };
 }
@@ -27,7 +27,7 @@ function evaluatePixel(samples, scenes) {
   for (var i = 0; i < samples.length; i++) {
     if (samples[i] && isFinite(samples[i].HH) && samples[i].HH > 0) idx.push(i);
   }
-  if (idx.length === 0) return [0, 0, 0, 0];
+  if (idx.length === 0) return [0, 0, 0];
 
   idx.sort(function(a, b) {
     return new Date(scenes.orbits[a].dateFrom) - new Date(scenes.orbits[b].dateFrom);
@@ -46,7 +46,8 @@ function evaluatePixel(samples, scenes) {
   var b = norm(toDb(samples[iEarly].HH), LO, HI);  // earliest
 
   var a = samples[iLate].dataMask ? 1 : 0;
-  return [r, g, b, a];
+  return [r, g, b];
 }
+
 
 
