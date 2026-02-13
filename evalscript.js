@@ -24,18 +24,14 @@ var earliest_date = "2018-04-11"; var middle_date = "2018-06-10"; var latest_dat
 // Definition stretch value for Composite
 var stretch_min = 0.0; var stretch_max = 1.1; // default value are stretch_min = 0; stretch_max = 1.1.
 // ***********************************
-
+var POL = "HH"
 // Selection of polarization
 function setup() {
   return {
-    input: [{
-      bands: [
-        "VV"
-      ]
-    }],
+    input: [{ bands: [POL] }],
     output: { bands: 3 },
     mosaicking: "ORBIT"
-  }
+  };
 }
 
 
@@ -64,7 +60,7 @@ function dateformat(d) {
 
 // Backscatter Coefficient
 function calcdB(sample) {
-  return (Math.max(0, Math.log((sample.VV)) * 0.21714724095 + 1));
+  return (Math.max(0, Math.log((sample[POL])) * 0.21714724095 + 1));
 }
 
 
