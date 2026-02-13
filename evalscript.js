@@ -1,101 +1,50 @@
-//VERSION=3 (auto-converted from 1)
-// ***
-// Sentinel-1 Multi-temporal Backscatter Coefficient Composite
-// For use in Sinergise EO Browser (https://apps.sentinel-hub.com/eo-browser).
-// Multi-temporal processing needs to be configured for layers.
-// Author: Annamaria Luongo (Twitter: @annamaria_84, www.linkedin.com/in/annamaria-luongo-RS), 
-// CC BY 4.0 International - https://creativecommons.org/licenses/by/4.0/
-// ***
-
-// ****General definition*************
-//Definition date/images used in the composite
-var earliest_date = "2018-04-11"; var middle_date = "2018-06-10"; var latest_date = "2018-08-21"; // Kilauea volcano evolution during 2018's eruption
-//var earliest_date = "2019-03-13"; var middle_date = "2019-03-19"; var latest_date = "2019-03-25"; // Beira flooding, Mozambique
-//var earliest_date = "2018-05-06"; var middle_date = "2018-06-05"; var latest_date = "2018-07-11"; // Po delta, Italy, soil/crop evolution 
-//var earliest_date = "2017-05-13"; var middle_date = "2017-07-06"; var latest_date = "2017-07-12"; // Vesuvio wildfire, Italy
-//var earliest_date = "2018-12-19"; var middle_date = "2018-12-25"; var latest_date = "2018-12-31"; // Anak Krakatau Volcano evolution during the first three weeks after the eruption 
-//var earliest_date = "2018-12-16"; var middle_date = "2018-12-22"; var latest_date = "2018-12-28"; // Etna Volcano, Christmas' eve eruption     
-//var earliest_date = "2017-04-13"; var middle_date = "2018-04-20"; var latest_date = "2019-04-15"; // Viedma glacier, Argentina, during 2017-2019
-//var earliest_date = "2017-04-13"; var middle_date = "2018-04-20"; var latest_date = "2019-04-15"; // Filadelfia, Paraguay, deforestation 
-//var earliest_date = "2018-03-25"; var middle_date = "2018-08-16"; var latest_date = "2018-12-26"; // Mekong delta, Vietnam, rice growth
-//var earliest_date = "2017-04-16"; var middle_date = "2018-04-11"; var latest_date = "2019-04-06"; // Mississipi delta, USA, during 2017-2019  
-
-// Definition stretch value for Composite
-var stretch_min = 0.0; var stretch_max = 1.1; // default value are stretch_min = 0; stretch_max = 1.1.
-// ***********************************
-
-var POL = "HV"; // "HH" for DH, "VV" for DV
-var stretch_min = 0.0;
-var stretch_max = 1.1;
+//VERSION=3
 
 function setup() {
   return {
-    input: [{ bands: [POL] }],
-    output: { bands: 3 },
+    input: [{ bands: ["HH", "dataMask"] }],
+    output: { bands: 4 },
     mosaicking: "ORBIT"
   };
 }
 
-function calcdB(sample) {
-  if (!sample) return 0;
-  var v = sample[POL];
-  if (!isFinite(v) || v <= 0) return 0;
-  return Math.max(0, Math.log(v) * 0.21714724095 + 1);
+function toDb(v) {
+  if (!isFinite(v) || v <= 0) return -40;
+  return 10 * Math.log(v) / Math.LN10;
 }
 
-function stretch(val, min, max) {
-  var x = (val - min) / (max - min);
+function norm(db, lo, hi) {
+  var x = (db - lo) / (hi - lo);
   if (x < 0) return 0;
   if (x > 1) return 1;
   return x;
 }
 
 function evaluatePixel(samples, scenes) {
-  if (!samples || samples.length === 0) return [0, 0, 0];
+  if (!samples || samples.length === 0) return [0, 0, 0, 0];
 
   var idx = [];
   for (var i = 0; i < samples.length; i++) {
-    if (samples[i] && isFinite(samples[i][POL]) && samples[i][POL] > 0) idx.push(i);
+    if (samples[i] && isFinite(samples[i].HH) && samples[i].HH > 0) idx.push(i);
   }
-  if (idx.length === 0) return [0, 0, 0];
+  if (idx.length === 0) return [0, 0, 0, 0];
 
   idx.sort(function(a, b) {
-    var da = new Date(scenes.orbits[a].dateFrom).getTime();
-    var db = new Date(scenes.orbits[b].dateFrom).getTime();
-    return da - db;
+    return new Date(scenes.orbits[a].dateFrom) - new Date(scenes.orbits[b].dateFrom);
   });
 
-  var earliest = idx[0];
-  var latest = idx[idx.length - 1];
-  var middle = idx[Math.floor((idx.length - 1) / 2)];
+  var iEarly = idx[0];
+  var iLate = idx[idx.length - 1];
+  var iMid = idx[Math.floor((idx.length - 1) / 2)];
 
-  var r = stretch(calcdB(samples[latest]), stretch_min, stretch_max);
-  var g = stretch(calcdB(samples[middle]), stretch_min, stretch_max);
-  var b = stretch(calcdB(samples[earliest]), stretch_min, stretch_max);
+  // HH Arctic default stretch
+  var LO = -25.0;
+  var HI = -5.0;
 
-  return [r, g, b];
+  var r = norm(toDb(samples[iLate].HH), LO, HI);   // latest
+  var g = norm(toDb(samples[iMid].HH), LO, HI);    // middle
+  var b = norm(toDb(samples[iEarly].HH), LO, HI);  // earliest
+
+  var a = samples[iLate].dataMask ? 1 : 0;
+  return [r, g, b, a];
 }
-
-// Selection of dates for composite / analysis
-
-function preProcessScenes(collections) {
-  var allowedDates = [latest_date, middle_date, earliest_date];  //(1°date/latest image-> red; 2°date-> green;  3°date/earliest image->blue)
-  collections.scenes.orbits = collections.scenes.orbits.filter(function (orbit) {
-    var orbitDateFrom = orbit.dateFrom.split("T")[0];
-    return allowedDates.includes(orbitDateFrom);
-  })
-  return collections
-}
-
-// Date conversion  
-function dateformat(d) {
-  var dd = d.getDate();
-  var mm = d.getMonth() + 1;
-  var yyyy = d.getFullYear();
-  if (dd < 10) { dd = '0' + dd }
-  if (mm < 10) { mm = '0' + mm }
-  var isodate = yyyy + '-' + mm + '-' + dd;
-  return isodate;
-}
-
-
